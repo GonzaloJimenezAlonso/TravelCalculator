@@ -111,13 +111,14 @@
   <div class="card">
     <label>Coche</label>
     <div class="cars">
-      <button data-car="troc" class="active">VW T-Roc</button>
-      <button data-car="arona">SEAT Arona</button>
+      <button data-car="arona" class="active">SEAT Arona</button>
+      <button data-car="troc">VW T-Roc</button>
+      
     </div>
     <div class="row" style="margin-top:12px;">
       <div class="field">
         <label>Consumo (l/100km)</label>
-        <input type="number" step="0.1" id="consumo" value="5.5">
+        <input type="number" step="0.1" id="consumo" value="6.2">
       </div>
     </div>
   </div>
@@ -173,7 +174,6 @@
     <div class="totalsub" id="totalsub">-- km · -- h</div>
     <div class="breakdown">
       <div><span>Distancia</span><span id="rDist">--</span></div>
-      <div><span>Combustible (litros)</span><span id="rLitros">--</span></div>
       <div><span>Coste combustible</span><span id="rFuel">--</span></div>
       <div><span>Peajes</span><span id="rPeaje">--</span></div>
     </div>
@@ -182,7 +182,7 @@
 
 <script>
 /* ---------- Datos base (editables por el usuario en los campos) ---------- */
-const CARS = { troc: {label:'VW T-Roc', consumo:5.5}, arona: {label:'SEAT Arona', consumo:6.2} };
+const CARS = { arona: {label:'SEAT Arona', consumo:6.2}, troc: {label:'VW T-Roc', consumo:5.5} };
 const PRICES_DEFAULT = { es: 1.65, pt: 1.72 };
 
 const PLACES = {
@@ -230,12 +230,12 @@ async function resolveEstacionId(pais){
 async function fetchPrecioLive(pais){
   const id = await resolveEstacionId(pais);
   const det = await precioilFetch(`/estaciones/detalles/${id}`);
-  const precio = parseFloat(det.Gasolina95 ?? det.Diesel);
+  const precio = parseFloat(det.Gasolina95 ?? det.Simples95);
   if(isNaN(precio)) throw new Error('Respuesta sin precio válido');
   return { precio, nombre: det.nombreEstacion, updatedAt: det.updatedAt };
 }
 
-let state = { car:'troc', origen:null, destino:null };
+let state = { car:'arona', origen:null, destino:null };
 
 /* ---------- Persistencia ligera ---------- */
 const store = {
@@ -488,7 +488,6 @@ document.getElementById('calcBtn').addEventListener('click', async ()=>{
     document.getElementById('total').textContent = fmtEUR(total);
     document.getElementById('totalsub').textContent = `${distText} · ${timeText}`;
     document.getElementById('rDist').textContent = distText;
-    document.getElementById('rLitros').textContent = litros.toFixed(2)+' l';
     document.getElementById('rFuel').textContent = fmtEUR(costeFuel);
     document.getElementById('rPeaje').textContent = fmtEUR(peajeTotal);
     resEl.classList.add('show');
