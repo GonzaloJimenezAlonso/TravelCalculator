@@ -363,17 +363,47 @@ document.getElementById('consumo').addEventListener('change', e=>{
 const paisSel = document.getElementById('pais');
 const precioInput = document.getElementById('precio');
 const liveInfo = document.getElementById('liveInfo');
-function loadPrecioPais(){
+async function actualizarPrecio() {
   const pais = paisSel.value;
-  const saved = store.get('precio_'+pais, null);
+  liveInfo.textContent = 'A consultar…';
+
+  try {
+    const { precio, nombre, updatedAt } = await fetchPrecioLive(pais);
+
+    precioInput.value = precio.toFixed(3);
+    store.set('precio_' + pais, precio);
+
+    const hora = updatedAt
+      ? new Date(updatedAt).toLocaleTimeString('pt-PT', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : '';
+
+    liveInfo.textContent = `${nombre} · ${hora}`;
+  } catch (e) {
+    liveInfo.textContent = 'Erro ao atualizar';
+  }
+}
+
+function loadPrecioPais() {
+  const pais = paisSel.value;
+  const saved = store.get('precio_' + pais, null);
   precioInput.value = saved ?? PRICES_DEFAULT[pais];
   liveInfo.textContent = '';
 }
-paisSel.addEventListener('change', loadPrecioPais);
-precioInput.addEventListener('change', e=>{
-  store.set('precio_'+paisSel.value, parseFloat(e.target.value));
+
+paisSel.addEventListener('change', () => {
+  loadPrecioPais();
+  actualizarPrecio();
 });
+
+precioInput.addEventListener('change', e => {
+  store.set('precio_' + paisSel.value, parseFloat(e.target.value));
+});
+
 loadPrecioPais();
+actualizarPrecio();
 
 /* ---------- Precio en tiempo real (precioil) ---------- */
 document.getElementById('liveBtn').addEventListener('click', async ()=>{
