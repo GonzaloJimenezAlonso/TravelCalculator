@@ -1,43 +1,506 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>En construcción</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #f5f5f5;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
-    h1 {
-      font-size: 3rem;
-      color: #333;
-      text-align: center;
-    }
-
-    p {
-      margin-top: 12px;
-      text-align: center;
-      color: #666;
-      font-size: 1.2rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos Viaje">
+<meta name="theme-color" content="#12161b">
+<title>Gastos Viaje</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2312161b'/%3E%3Cpath d='M20 62 L32 34 H68 L80 62' stroke='%23e8b13d' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Ccircle cx='34' cy='66' r='7' fill='%23e8b13d'/%3E%3Ccircle cx='66' cy='66' r='7' fill='%23e8b13d'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#12161b; --bg2:#191f26; --line:#262e37; --text:#e9edf1; --sub:#8a97a3;
+    --accent:#e8b13d; --accent2:#4fb0a5; --danger:#d9695f; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh; overscroll-behavior:none;}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+  .wrap{max-width:520px;margin:0 auto;padding:22px 16px 60px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+  header h1{font-size:19px;margin:0;letter-spacing:.2px;font-weight:700;}
+  header .odo{font-family:var(--mono);color:var(--sub);font-size:11px;}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .row{display:flex;gap:10px;}
+  .field{flex:1;position:relative;margin-bottom:12px;}
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);margin-bottom:6px;}
+  input,select{width:100%;background:#0e1216;border:1px solid var(--line);color:var(--text);
+    border-radius:9px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;}
+  input:focus,select:focus{border-color:var(--accent);}
+  input[type=number]{font-family:var(--mono);}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .chip{font-size:12px;background:#0e1216;border:1px solid var(--line);color:var(--sub);
+    padding:5px 10px;border-radius:999px;cursor:pointer;user-select:none;}
+  .chip:active{background:#20262d;}
+  .swap{align-self:center;background:#0e1216;border:1px solid var(--line);color:var(--accent);
+    width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer;flex:none;margin-top:-2px;}
+  .suggest{position:absolute;top:100%;left:0;right:0;background:#0e1216;border:1px solid var(--line);
+    border-top:none;border-radius:0 0 9px 9px;z-index:5;max-height:180px;overflow:auto;display:none;}
+  .suggest div{padding:9px 12px;font-size:13px;color:var(--text);border-top:1px solid var(--line);cursor:pointer;}
+  .suggest div:first-child{border-top:none;}
+  .suggest div:active{background:#20262d;}
+  .cars{display:flex;gap:8px;}
+  .cars button{flex:1;background:#0e1216;border:1px solid var(--line);color:var(--sub);
+    padding:12px 6px;border-radius:9px;font-size:13px;cursor:pointer;}
+  .cars button.active{border-color:var(--accent);color:var(--accent);background:#1c1810;}
+  .mini{font-size:11px;color:var(--sub);margin-top:4px;}
+  .liveRow{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .liveBtn{background:#0e1216;border:1px solid var(--line);color:var(--accent2);font-size:12px;
+    padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+  .liveBtn:disabled{opacity:.5;}
+  .switch{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .switch input{width:auto;accent-color:var(--accent);transform:scale(1.2);}
+  .calc{width:100%;background:var(--accent);color:#1a1305;border:none;border-radius:11px;
+    padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;}
+  .calc:active{opacity:.85;}
+  .result{display:none;}
+  .result.show{display:block;}
+  .total{font-family:var(--mono);font-size:38px;font-weight:700;color:var(--accent);text-align:center;margin:6px 0 2px;}
+  .totalsub{text-align:center;color:var(--sub);font-size:12px;margin-bottom:14px;}
+  .breakdown div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:14px;}
+  .breakdown div:first-child{border-top:none;}
+  .breakdown span:last-child{font-family:var(--mono);color:var(--text);}
+  .breakdown span:first-child{color:var(--sub);}
+  .err{color:var(--danger);font-size:13px;text-align:center;padding:6px 0;display:none;}
+  .hide{display:none !important;}
+</style>
 </head>
 <body>
-  <div>
-    <h1>🚧 Web en construcción 🚧</h1>
-    <p>Próximamente estará disponible.</p>
+<div class="wrap">
+  <header>
+    <h1>⛽ Gastos Viaje</h1>
+    <span class="odo" id="odo">--</span>
+  </header>
+
+  <div class="card">
+    <div class="field">
+      <label>Origen</label>
+      <input id="origen" autocomplete="off" placeholder="Dirección de origen">
+      <div class="suggest" id="sugOrigen"></div>
+      <div class="chips">
+        <div class="chip" data-set="origen" data-place="casa">Casa</div>
+        <div class="chip" data-set="origen" data-place="sevilla">Sevilla</div>
+        <div class="chip" data-set="origen" data-place="vilanova">Vila Nova</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;margin:-6px 0 8px;">
+      <button class="swap" id="swapBtn" title="Invertir">⇄</button>
+    </div>
+
+    <div class="field" style="margin-bottom:4px;">
+      <label>Destino</label>
+      <input id="destino" autocomplete="off" placeholder="Dirección de destino">
+      <div class="suggest" id="sugDestino"></div>
+      <div class="chips">
+        <div class="chip" data-set="destino" data-place="casa">Casa</div>
+        <div class="chip" data-set="destino" data-place="sevilla">Sevilla</div>
+        <div class="chip" data-set="destino" data-place="vilanova">Vila Nova</div>
+      </div>
+    </div>
+
+    <label class="switch" style="margin-top:12px;">
+      <span style="font-size:13px;color:var(--text);">Ida y vuelta</span>
+      <input type="checkbox" id="roundtrip">
+    </label>
   </div>
+
+  <div class="card">
+    <label>Coche</label>
+    <div class="cars">
+      <button data-car="troc" class="active">VW T-Roc</button>
+      <button data-car="arona">SEAT Arona</button>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field">
+        <label>Consumo (l/100km)</label>
+        <input type="number" step="0.1" id="consumo" value="5.5">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Repostaje</label>
+    <div class="row">
+      <div class="field">
+        <select id="pais">
+          <option value="es">España — Repsol Cartaya (A49)</option>
+          <option value="pt">Portugal — Moeve Almodôvar (A2)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="margin-bottom:4px;">
+        <label>Precio combustible (€/l)</label>
+        <input type="number" step="0.001" id="precio" value="1.65">
+      </div>
+    </div>
+    <div class="liveRow">
+      <button class="liveBtn" id="liveBtn">🔄 Precio en tiempo real</button>
+      <span class="mini" id="liveInfo"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Peaje</label>
+    <div class="row" id="peajeSingleWrap">
+      <div class="field" style="margin-bottom:0;">
+        <label>Peaje ruta (€)</label>
+        <input type="number" step="0.1" id="peaje" value="0">
+      </div>
+    </div>
+    <div class="row hide" id="peajeDualWrap">
+      <div class="field">
+        <label>Peaje ida (€)</label>
+        <input type="number" step="0.1" id="peajeIda" value="0">
+      </div>
+      <div class="field">
+        <label>Peaje vuelta (€)</label>
+        <input type="number" step="0.1" id="peajeVuelta" value="0">
+      </div>
+    </div>
+    <div class="mini" id="peajeInfo"></div>
+  </div>
+
+  <button class="calc" id="calcBtn">Calcular viaje</button>
+  <div class="err" id="err"></div>
+
+  <div class="card result" id="result">
+    <div class="total" id="total">0,00 €</div>
+    <div class="totalsub" id="totalsub">-- km · -- h</div>
+    <div class="breakdown">
+      <div><span>Distancia</span><span id="rDist">--</span></div>
+      <div><span>Combustible (litros)</span><span id="rLitros">--</span></div>
+      <div><span>Coste combustible</span><span id="rFuel">--</span></div>
+      <div><span>Peajes</span><span id="rPeaje">--</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Datos base (editables por el usuario en los campos) ---------- */
+const CARS = { troc: {label:'VW T-Roc', consumo:5.5}, arona: {label:'SEAT Arona', consumo:6.2} };
+const PRICES_DEFAULT = { es: 1.65, pt: 1.72 };
+
+const PLACES = {
+  casa:     { label:'Casa',      address:'Av. Infante Santo 350, Lisboa, Portugal', lat:38.7093, lon:-9.1707 },
+  sevilla:  { label:'Sevilla',   address:'Calle Cardenal Bueno Monreal 12, Sevilla, España', lat:37.3806, lon:-5.9772 },
+  vilanova: { label:'Vila Nova', address:'Beco Azinhaga do Canal 2b, Portugal', lat:37.7256, lon:-8.7857 }
+};
+
+// Peajes DIRECCIONALES (origen>destino), en euros
+const TOLLS = {
+  'casa>sevilla': 23.80,
+  'sevilla>casa': 26.05,   // 23,80 + 2,25
+  'casa>vilanova': 9.05,
+  'vilanova>casa': 9.05
+};
+
+/* ---------- Precioil (precios en tiempo real) ---------- */
+const PRECIOIL_BASE = 'https://api.precioil.es';
+const PRECIOIL_API_KEY = 'pk_live_OlM09w3Hpff3jVgLJ2Zg4YNEuD-YalI4KZQ-YR817CE';
+// Coordenadas y filtro de nombre para localizar la estación exacta una sola vez (luego se cachea el idEstacion)
+const PRECIOIL_STATIONS = {
+  es: { name:'Repsol Cartaya (A49)', lat:37.322694, lon:-7.114472, match:'REPSOL' },
+  pt: { name:'Moeve Almodôvar (A2)', lat:37.535779, lon:-8.184768, match:'MOEVE' }
+};
+
+async function precioilFetch(path){
+  const r = await fetch(PRECIOIL_BASE + path, { headers: { 'X-API-Key': PRECIOIL_API_KEY } });
+  if(!r.ok) throw new Error('API precioil ' + r.status);
+  return r.json();
+}
+
+// Localiza idEstacion por radio+nombre y lo cachea (evita repetir la búsqueda geográfica cada vez)
+async function resolveEstacionId(pais){
+  const cached = store.get('precioil_id_'+pais, null);
+  if(cached) return cached;
+  const st = PRECIOIL_STATIONS[pais];
+  const data = await precioilFetch(`/estaciones/radio?lat=${st.lat}&lon=${st.lon}&radio=5&fields=basic`);
+  const list = Array.isArray(data) ? data : (data.items || data.estaciones || []);
+  const found = list.find(e => (e.nombreEstacion||'').toUpperCase().includes(st.match)) || list[0];
+  if(!found) throw new Error('Estación no encontrada en el radio configurado');
+  store.set('precioil_id_'+pais, found.idEstacion);
+  return found.idEstacion;
+}
+
+async function fetchPrecioLive(pais){
+  const id = await resolveEstacionId(pais);
+  const det = await precioilFetch(`/estaciones/detalles/${id}`);
+  const precio = parseFloat(det.Gasolina95 ?? det.Diesel);
+  if(isNaN(precio)) throw new Error('Respuesta sin precio válido');
+  return { precio, nombre: det.nombreEstacion, updatedAt: det.updatedAt };
+}
+
+let state = { car:'troc', origen:null, destino:null };
+
+/* ---------- Persistencia ligera ---------- */
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('gv_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ localStorage.setItem('gv_'+k, JSON.stringify(v)); }
+};
+
+/* ---------- Utilidades ---------- */
+function fmtEUR(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function tollKey(aId,bId){ return (aId && bId) ? (aId+'>'+bId) : null; }
+
+// Identifica el lugar predefinido más cercano a un punto (chip, autocompletado o geocodificado directo)
+// Esto es lo que corrige el peaje: antes solo funcionaba si el punto venía de un chip con id fijo.
+function nearestPlaceId(pt){
+  if(!pt) return null;
+  if(pt.id) return pt.id;
+  let best=null, bestD=Infinity;
+  for(const [id,p] of Object.entries(PLACES)){
+    const d = Math.hypot(pt.lat-p.lat, pt.lon-p.lon);
+    if(d<bestD){ bestD=d; best=id; }
+  }
+  return bestD < 0.03 ? best : null; // ~3km de tolerancia
+}
+
+/* ---------- Geocoding (Nominatim, sin API key) — solo refina coords, no bloquea ---------- */
+const geocodeCache = store.get('geocache', {});
+async function geocode(query){
+  if(geocodeCache[query]) return geocodeCache[query];
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query);
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.length) throw new Error('No encontrado: '+query);
+  const res = { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon), label: j[0].display_name };
+  geocodeCache[query] = res;
+  store.set('geocache', geocodeCache);
+  return res;
+}
+async function searchPlaces(query){
+  if(query.length < 3) return [];
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' + encodeURIComponent(query);
+  const r = await fetch(url);
+  return await r.json();
+}
+
+/* ---------- Autocompletado ---------- */
+function setupAutocomplete(inputId, sugId, key){
+  const input = document.getElementById(inputId);
+  const sug = document.getElementById(sugId);
+  let timer=null;
+  input.addEventListener('input', ()=>{
+    state[key] = null;
+    updatePeajeSugerido();
+    clearTimeout(timer);
+    const q = input.value.trim();
+    timer = setTimeout(async ()=>{
+      if(q.length<3){ sug.style.display='none'; return; }
+      try{
+        const results = await searchPlaces(q);
+        if(!results.length){ sug.style.display='none'; return; }
+        sug.innerHTML='';
+        results.forEach(r=>{
+          const d=document.createElement('div');
+          d.textContent = r.display_name;
+          d.onclick=()=>{
+            input.value = r.display_name;
+            state[key] = { id:null, lat:parseFloat(r.lat), lon:parseFloat(r.lon), label:r.display_name };
+            sug.style.display='none';
+            updatePeajeSugerido();
+          };
+          sug.appendChild(d);
+        });
+        sug.style.display='block';
+      }catch(e){ sug.style.display='none'; }
+    }, 450);
+  });
+  input.addEventListener('blur', ()=> setTimeout(()=> sug.style.display='none', 200));
+}
+setupAutocomplete('origen','sugOrigen','origen');
+setupAutocomplete('destino','sugDestino','destino');
+
+/* ---------- Chips de lugares predefinidos ---------- */
+function selectPlace(target, placeId){
+  const place = PLACES[placeId];
+  const input = document.getElementById(target);
+  input.value = place.label + ' — ' + place.address;
+  state[target] = { id:placeId, lat:place.lat, lon:place.lon, label:place.label };
+  updatePeajeSugerido();
+  geocode(place.address).then(geo=>{
+    if(state[target] && state[target].id===placeId){ state[target].lat=geo.lat; state[target].lon=geo.lon; }
+  }).catch(()=>{});
+}
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=> selectPlace(chip.dataset.set, chip.dataset.place));
+});
+
+/* ---------- Swap origen/destino ---------- */
+document.getElementById('swapBtn').addEventListener('click', ()=>{
+  const oInput = document.getElementById('origen');
+  const dInput = document.getElementById('destino');
+  [oInput.value, dInput.value] = [dInput.value, oInput.value];
+  [state.origen, state.destino] = [state.destino, state.origen];
+  updatePeajeSugerido();
+});
+
+/* ---------- Selección de coche ---------- */
+document.querySelectorAll('.cars button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.cars button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.car = btn.dataset.car;
+    const saved = store.get('consumo_'+state.car, null);
+    document.getElementById('consumo').value = saved ?? CARS[state.car].consumo;
+  });
+});
+document.getElementById('consumo').addEventListener('change', e=>{
+  store.set('consumo_'+state.car, parseFloat(e.target.value));
+});
+
+/* ---------- País / precio combustible ---------- */
+const paisSel = document.getElementById('pais');
+const precioInput = document.getElementById('precio');
+const liveInfo = document.getElementById('liveInfo');
+function loadPrecioPais(){
+  const pais = paisSel.value;
+  const saved = store.get('precio_'+pais, null);
+  precioInput.value = saved ?? PRICES_DEFAULT[pais];
+  liveInfo.textContent = '';
+}
+paisSel.addEventListener('change', loadPrecioPais);
+precioInput.addEventListener('change', e=>{
+  store.set('precio_'+paisSel.value, parseFloat(e.target.value));
+});
+loadPrecioPais();
+
+/* ---------- Precio en tiempo real (precioil) ---------- */
+document.getElementById('liveBtn').addEventListener('click', async ()=>{
+  const pais = paisSel.value;
+  const btn = document.getElementById('liveBtn');
+  btn.disabled = true; liveInfo.textContent = 'Consultando…';
+  try{
+    const { precio, nombre, updatedAt } = await fetchPrecioLive(pais);
+    precioInput.value = precio.toFixed(3);
+    store.set('precio_'+pais, precio);
+    const hora = updatedAt ? new Date(updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) : '';
+    liveInfo.textContent = `${nombre || PRECIOIL_STATIONS[pais].name} · ${hora}`;
+  }catch(e){
+    liveInfo.textContent = 'Error: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+/* ---------- Ida y vuelta: alterna peaje simple / doble ---------- */
+const roundtripChk = document.getElementById('roundtrip');
+const peajeSingleWrap = document.getElementById('peajeSingleWrap');
+const peajeDualWrap = document.getElementById('peajeDualWrap');
+roundtripChk.addEventListener('change', ()=>{
+  peajeSingleWrap.classList.toggle('hide', roundtripChk.checked);
+  peajeDualWrap.classList.toggle('hide', !roundtripChk.checked);
+  updatePeajeSugerido();
+});
+
+/* ---------- Peaje sugerido según ruta (direccional) ---------- */
+const peajeInput = document.getElementById('peaje');
+const peajeIdaInput = document.getElementById('peajeIda');
+const peajeVueltaInput = document.getElementById('peajeVuelta');
+const peajeInfo = document.getElementById('peajeInfo');
+
+function updatePeajeSugerido(){
+  const aId = nearestPlaceId(state.origen);
+  const bId = nearestPlaceId(state.destino);
+  const keyIda = tollKey(aId,bId);
+  const keyVuelta = tollKey(bId,aId);
+
+  if(roundtripChk.checked){
+    const ida = TOLLS[keyIda]; const vuelta = TOLLS[keyVuelta];
+    peajeIdaInput.value = store.get('peaje_'+keyIda, ida ?? 0);
+    peajeVueltaInput.value = store.get('peaje_'+keyVuelta, vuelta ?? 0);
+    peajeIdaInput.dataset.key = keyIda || '';
+    peajeVueltaInput.dataset.key = keyVuelta || '';
+    peajeInfo.textContent = (ida!==undefined) ? 'Peajes habituales de esta ruta (editables)' : 'Sin peaje predefinido para esta ruta';
+  } else {
+    const ida = TOLLS[keyIda];
+    peajeInput.value = store.get('peaje_'+keyIda, ida ?? 0);
+    peajeInput.dataset.key = keyIda || '';
+    peajeInfo.textContent = (ida!==undefined) ? 'Peaje habitual de esta ruta (editable)' : 'Sin peaje predefinido para esta ruta';
+  }
+}
+[peajeInput, peajeIdaInput, peajeVueltaInput].forEach(el=>{
+  el.addEventListener('change', ()=>{
+    const key = el.dataset.key;
+    if(key) store.set('peaje_'+key, parseFloat(el.value));
+  });
+});
+updatePeajeSugerido();
+
+/* ---------- Cálculo de ruta (OSRM, sin API key) ---------- */
+async function routeDistanceKm(a,b){
+  const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.routes || !j.routes.length) throw new Error('No se pudo calcular la ruta');
+  return { km: j.routes[0].distance/1000, h: j.routes[0].duration/3600 };
+}
+
+/* ---------- Botón calcular ---------- */
+document.getElementById('calcBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('err');
+  errEl.style.display='none';
+  const resEl = document.getElementById('result');
+  resEl.classList.remove('show');
+
+  try{
+    let origen = state.origen, destino = state.destino;
+    if(!origen){
+      const v = document.getElementById('origen').value.trim();
+      if(!v) throw new Error('Indica un origen');
+      const g = await geocode(v); origen = { lat:g.lat, lon:g.lon };
+    }
+    if(!destino){
+      const v = document.getElementById('destino').value.trim();
+      if(!v) throw new Error('Indica un destino');
+      const g = await geocode(v); destino = { lat:g.lat, lon:g.lon };
+    }
+
+    const { km, h } = await routeDistanceKm(origen, destino);
+    const consumo = parseFloat(document.getElementById('consumo').value) || 0;
+    const precio = parseFloat(document.getElementById('precio').value) || 0;
+    const litros1 = km/100*consumo;
+    const costeFuel1 = litros1*precio;
+
+    let litros, costeFuel, peajeTotal, distText, timeText;
+    if(roundtripChk.checked){
+      litros = litros1*2;
+      costeFuel = costeFuel1*2;
+      const ida = parseFloat(peajeIdaInput.value) || 0;
+      const vuelta = parseFloat(peajeVueltaInput.value) || 0;
+      peajeTotal = ida + vuelta;
+      distText = (km*2).toFixed(1)+' km (ida y vuelta)';
+      timeText = (h*2).toFixed(1)+' h';
+    } else {
+      litros = litros1;
+      costeFuel = costeFuel1;
+      peajeTotal = parseFloat(peajeInput.value) || 0;
+      distText = km.toFixed(1)+' km';
+      timeText = h.toFixed(1)+' h';
+    }
+    const total = costeFuel + peajeTotal;
+
+    document.getElementById('total').textContent = fmtEUR(total);
+    document.getElementById('totalsub').textContent = `${distText} · ${timeText}`;
+    document.getElementById('rDist').textContent = distText;
+    document.getElementById('rLitros').textContent = litros.toFixed(2)+' l';
+    document.getElementById('rFuel').textContent = fmtEUR(costeFuel);
+    document.getElementById('rPeaje').textContent = fmtEUR(peajeTotal);
+    resEl.classList.add('show');
+  }catch(e){
+    errEl.textContent = e.message || 'Error al calcular';
+    errEl.style.display='block';
+  }
+});
+
+/* ---------- Reloj cabecera ---------- */
+function tickOdo(){ document.getElementById('odo').textContent = new Date().toLocaleDateString('es-ES'); }
+tickOdo();
+</script>
 </body>
 </html>
