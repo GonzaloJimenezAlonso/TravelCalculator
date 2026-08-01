@@ -500,7 +500,7 @@ function getDistrictIdByCoords(lat, lon) {
   return 11; // Por defecto Lisboa
 }
 
-/* API DGEG Integration por Distrito Bajo Demanda */
+/* API DGEG Integration por Distrito Bajo Demanda (Filtrado para Gasolina 95) */
 async function fetchDistrictStations(distritoId) {
   if (state.loadedDistricts.has(distritoId)) return;
   state.loadedDistricts.add(distritoId);
@@ -513,8 +513,23 @@ async function fetchDistrictStations(distritoId) {
 
     if (data.status && Array.isArray(data.resultado)) {
       const newStations = data.resultado.map(item => {
-        const priceStr = (item.Preco || "0").replace("€", "").replace(",", ".").trim();
-        const precioNum = parseFloat(priceStr);
+        // Buscamos específicamente el combustible de Gasolina 95 dentro de la lista de la gasolinera
+        let preco95 = 0;
+        
+        if (Array.isArray(item.Combustiveis) && item.Combustiveis.length > 0) {
+          // 1. Intentar encontrar Gasolina 95 (simple o especial)
+          const comb95 = item.Combustiveis.find(c => 
+            c.TipoCombustivel && c.TipoCombustivel.toLowerCase().includes('gasolina 95')
+          );
+          if (comb95) {
+            preco95 = parseFloat((comb95.Preco || "0").replace("€", "").replace(",", ".").trim());
+          } else {
+            // Si no encuentra el array detallado, usar el precio principal que devuelve el objeto
+            preco95 = parseFloat((item.Preco || "0").replace("€", "").replace(",", ".").trim());
+          }
+        } else {
+          preco95 = parseFloat((item.Preco || "0").replace("€", "").replace(",", ".").trim());
+        }
 
         return {
           id: item.Id,
@@ -523,7 +538,7 @@ async function fetchDistrictStations(distritoId) {
           direccao: item.Morada || "",
           lat: parseFloat(item.Latitude),
           lon: parseFloat(item.Longitude),
-          precio: isNaN(precioNum) ? 0 : precioNum,
+          precio: isNaN(preco95) ? 0 : preco95,
           actualizacion: formatRelativeTime(item.DataAtualizacao)
         };
       }).filter(s => !isNaN(s.lat) && !isNaN(s.lon) && s.precio > 0);
