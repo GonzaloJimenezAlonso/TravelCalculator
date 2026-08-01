@@ -500,7 +500,7 @@ function getDistrictIdByCoords(lat, lon) {
   return 11; // Por defecto Lisboa
 }
 
-/* API DGEG Integration por Distrito Bajo Demanda (Filtrado para Gasolina 95) */
+/* API DGEG Integration por Distrito — Filtrado Estricto de Gasolina 95 */
 async function fetchDistrictStations(distritoId) {
   if (state.loadedDistricts.has(distritoId)) return;
   state.loadedDistricts.add(distritoId);
@@ -512,41 +512,58 @@ async function fetchDistrictStations(distritoId) {
     const data = await response.json();
 
     if (data.status && Array.isArray(data.resultado)) {
-      const newStations = data.resultado.map(item => {
-        // Buscamos específicamente el combustible de Gasolina 95 dentro de la lista de la gasolinera
-        let preco95 = 0;
-        
+      const newStations = [];
+
+      data.resultado.forEach(item => {
+        let precio95 = null;
+
+        // 1. Si la API devuelve el array de combustibles del puesto
         if (Array.isArray(item.Combustiveis) && item.Combustiveis.length > 0) {
-          // 1. Intentar encontrar Gasolina 95 (simple o especial)
-          const comb95 = item.Combustiveis.find(c => 
-            c.TipoCombustivel && c.TipoCombustivel.toLowerCase().includes('gasolina 95')
-          );
-          if (comb95) {
-            preco95 = parseFloat((comb95.Preco || "0").replace("€", "").replace(",", ".").trim());
-          } else {
-            // Si no encuentra el array detallado, usar el precio principal que devuelve el objeto
-            preco95 = parseFloat((item.Preco || "0").replace("€", "").replace(",", ".").trim());
+          const comb95 = item.Combustiveis.find(c => {
+            const nombre = (c.TipoCombustivel || c.Combustivel || "").toLowerCase();
+            return nombre.includes('gasolina 95') || nombre.includes('gasolina especial 95');
+          });
+          if (comb95 && comb95.Preco) {
+            precio95 = parseFloat(comb95.Preco.replace("€", "").replace(",", ".").trim());
           }
-        } else {
-          preco95 = parseFloat((item.Preco || "0").replace("€", "").replace(",", ".").trim());
         }
 
-        return {
-          id: item.Id,
-          nombre: item.Nome || "Posto",
-          marca: item.Marca || "Outra",
-          direccao: item.Morada || "",
-          lat: parseFloat(item.Latitude),
-          lon: parseFloat(item.Longitude),
-          precio: isNaN(preco95) ? 0 : preco95,
-          actualizacion: formatRelativeTime(item.DataAtualizacao)
-        };
-      }).filter(s => !isNaN(s.lat) && !isNaN(s.lon) && s.precio > 0);
+        // 2. Si no viene en el array, verificar si el objeto principal es explícitamente Gasolina 95
+        if (!precio95 && item.Combustivel) {
+          const nombrePrincipal = item.Combustivel.toLowerCase();
+          if (nombrePrincipal.includes('gasolina 95') && item.Preco) {
+            precio95 = parseFloat(item.Preco.replace("€", "").replace(",", ".").trim());
+          }
+        }
 
-      // Fusionar evitando duplicados
-      const existingIds = new Set(state.stations.map(s => s.id));
-      newStations.forEach(s => {
-        if (!existingIds.has(s.id)) state.stations.push(s);
+        // 3. Fallback: Si no hay desglose pero hay un precio base
+        if (!precio95 && item.Preco) {
+          precio95 = parseFloat(item.Preco.replace("€", "").replace(",", ".").trim());
+        }
+
+        // Solo añadimos la gasolinera si encontramos un precio válido
+        if (precio95 && !isNaN(precio95) && precio95 > 0) {
+          newStations.push({
+            id: item.Id,
+            nombre: item.Nome || "Posto",
+            marca: item.Marca || "Outra",
+            direccao: item.Morada || "",
+            lat: parseFloat(item.Latitude),
+            lon: parseFloat(item.Longitude),
+            precio: precio95, // <--- Este precio es el único que leerá el mapa
+            actualizacion: formatRelativeTime(item.DataAtualizacao)
+          });
+        }
+      });
+
+      // Fusionar evitando duplicados y actualizando el precio si ya existía
+      newStations.forEach(st => {
+        const index = state.stations.findIndex(s => s.id === st.id);
+        if (index >= 0) {
+          state.stations[index] = st;
+        } else {
+          state.stations.push(st);
+        }
       });
 
       populateBrandFilter();
