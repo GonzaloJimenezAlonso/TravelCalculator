@@ -131,6 +131,7 @@
     <div class="row">
       <div class="field">
         <select id="pais">
+          <option value="pt">Portugal — BP Jardim Estrela</option>
           <option value="es">Espanha — Repsol Cartaya (A49)</option>
           <option value="pt">Portugal — Moeve Almodôvar (A2)</option>
           <option value="pt_repsol">Portugal — Repsol Porto Salvo</option>
@@ -140,7 +141,7 @@
     <div class="row">
       <div class="field" style="margin-bottom:4px;">
         <label>Preço combustível (€/l)</label>
-        <input type="number" step="0.001" id="precio" value="1.65">
+        <input type="number" step="0.001" id="precio" value="1.85">
       </div>
     </div>
     <div class="liveRow">
@@ -187,7 +188,7 @@
 <script>
 /* ---------- Datos base (editables por el usuario en los campos) ---------- */
 const CARS = { arona: {label:'SEAT Arona', consumo:6.2}, troc: {label:'VW T-Roc', consumo:5.5} };
-const PRICES_DEFAULT = { es: 1.65, pt: 1.94, pt_repsol: 1.95 };
+const PRICES_DEFAULT = { pt_bp_estrela: 2.09, es: 1.65, pt: 1.94, pt_repsol: 1.95 };
 
 const PLACES = {
   casa:     { label:'Casa',      address:'Av. Infante Santo 350, Lisboa, Portugal', lat:38.7093, lon:-9.1707 },
@@ -208,6 +209,7 @@ const PRECIOIL_BASE = 'https://api.precioil.es';
 const PRECIOIL_API_KEY = 'pk_live_OlM09w3Hpff3jVgLJ2Zg4YNEuD-YalI4KZQ-YR817CE';
 // Coordenadas y filtro de nombre para localizar la estación exacta una sola vez (luego se cachea el idEstacion)
 const PRECIOIL_STATIONS = {
+  pt_bp_estrela: { name: 'BP Jardim da Estrela', lat: 38.71434, lon: -9.16175, match: 'BP' },
   es: { name:'Repsol Cartaya (A49)', lat:37.322694, lon:-7.114472, match:'REPSOL' },
   pt: { name:'Moeve Almodôvar (A2)', lat:37.535779, lon:-8.184768, match:'MOEVE' },
   pt_repsol: {name:'Repsol Porto Salvo', lat:38.72953, lon:-9.30175,match:'REPSOL'}
