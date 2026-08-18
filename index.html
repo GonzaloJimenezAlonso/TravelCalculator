@@ -5,954 +5,478 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Gasolineras">
+<meta name="apple-mobile-web-app-title" content="Despesas Viagem">
 <meta name="theme-color" content="#12161b">
-<title>Gasolineras</title>
+<title>Despesas Viagem</title>
 
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="apple-touch-icon" href="assets/icon.png">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
 <style>
   :root{
-    --bg:#12161b; --bg2:#191f26; --bg3:#0e1216; --line:#262e37; --text:#e9edf1; --sub:#8a97a3;
+    --bg:#12161b; --bg2:#191f26; --line:#262e37; --text:#e9edf1; --sub:#8a97a3;
     --accent:#e8b13d; --accent2:#4fb0a5; --danger:#d9695f; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    height:100%; overscroll-behavior:none;}
-  body{
-    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    height:100dvh; height:100vh; overflow:hidden;
-  }
-
-  .app{display:flex; flex-direction:column; height:100%; position:relative;}
-
-  /* Topbar */
-  header.topbar{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:14px 16px; background:var(--bg2); border-bottom:1px solid var(--line);
-    flex:none; z-index:20;
-  }
-  header.topbar h1{font-size:19px;margin:0;letter-spacing:.2px;font-weight:700; display:flex; align-items:center; gap:8px;}
-  .topbar-actions{display:flex; gap:8px;}
-  .icon-btn{
-    width:36px; height:36px; border-radius:50%; background:var(--bg3); border:1px solid var(--line);
-    color:var(--text); font-size:16px; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; transition:transform .15s, border-color .15s;
-  }
-  .icon-btn:active{transform:scale(.92);}
-  .icon-btn.spinning{animation:spin .8s linear infinite;}
-  @keyframes spin{ to{transform:rotate(360deg);} }
-
-  /* Segmented Control */
-  .segment-wrap{padding:10px 16px; background:var(--bg2); border-bottom:1px solid var(--line); flex:none;}
-  .segment{
-    display:flex; background:var(--bg3); border:1px solid var(--line); border-radius:12px; padding:4px; gap:4px;
-  }
-  .segment button{
-    flex:1; background:transparent; border:none; color:var(--sub); padding:9px 6px; border-radius:9px;
-    font-size:13px; font-weight:600; cursor:pointer; transition:background .2s, color .2s; font-family:inherit;
-  }
-  .segment button.active{background:var(--accent); color:#1a1305;}
-
-  /* Dynamic Views */
-  .content{flex:1; position:relative; min-height:0; overflow:hidden;}
-  .view{position:absolute; inset:0; display:none;}
-  .view.active{display:block;}
-
-  /* Map View */
-  #map{width:100%; height:100%; background:var(--bg);}
-  .leaflet-tile-pane{ filter:invert(1) hue-rotate(180deg) brightness(.94) contrast(.88) saturate(.7); }
-  .leaflet-control-attribution{
-    background:rgba(14,18,22,.75) !important; color:var(--sub) !important; font-size:9px !important;
-  }
-  .leaflet-control-attribution a{color:var(--sub) !important;}
-
-  /* FAB Location Button */
-  .fab{
-    position:absolute; width:48px; height:48px; border-radius:50%; background:var(--bg2);
-    border:1px solid var(--accent); color:var(--accent); font-size:20px; display:flex;
-    align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.6);
-    z-index:500; transition:transform .15s, background-color .2s;
-  }
-  .fab:active{transform:scale(.92); background:var(--bg3);}
-  .fab.locate{right:16px; bottom:20px;}
-
-  /* Custom Leaflet Marker Pins */
-  .station-marker{background:transparent; border:none;}
-  .pin{
-    position:relative; background:var(--pin-color); color:#0e1216; font-weight:800; font-size:12px;
-    font-family:var(--mono); padding:6px 10px; border-radius:14px; white-space:nowrap;
-    box-shadow:0 3px 10px rgba(0,0,0,.5); border:2px solid rgba(0,0,0,.28); cursor:pointer;
-  }
-  .pin::after{
-    content:''; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
-    border-width:6px 6px 0 6px; border-style:solid; border-color:var(--pin-color) transparent transparent transparent;
-  }
-  .pin.is-selected{outline:2px solid #fff; outline-offset:2px; transform:scale(1.1);}
-
-  .user-dot{width:16px; height:16px; border-radius:50%; background:#4f9bf0; border:3px solid #fff;
-    box-shadow:0 0 0 4px rgba(79,155,240,.35), 0 2px 6px rgba(0,0,0,.4);}
-
-  /* Bottom Sheet Modal Corrección pointer-events y visibility */
-  .sheet-backdrop{
-    position:absolute; inset:0; background:rgba(0,0,0,0.4); pointer-events:none; opacity:0;
-    transition:opacity .25s ease; z-index:1000;
-  }
-  .sheet-backdrop.show{pointer-events:auto; opacity:1;}
-  .sheet{
-    position:absolute; left:0; right:0; bottom:0; background:var(--bg2); border-top:1px solid var(--line);
-    border-radius:20px 20px 0 0; padding:12px 18px calc(20px + env(safe-area-inset-bottom));
-    transform:translateY(105%); transition:transform .3s cubic-bezier(.16,1,.3,1), visibility .3s; 
-    z-index:1001; box-shadow:0 -8px 30px rgba(0,0,0,.6);
-    pointer-events:none; visibility:hidden;
-  }
-  .sheet.show{transform:translateY(0); pointer-events:auto; visibility:visible;}
-  .sheet-handle{width:40px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 14px;}
-  .sheet-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
-  .sheet-title{font-size:18px; font-weight:700; margin:0 0 4px; color:var(--text);}
-  .sheet-brand{font-size:13px; color:var(--sub); display:block; line-height:1.3;}
-  .sheet-price{font-family:var(--mono); font-size:26px; font-weight:700; color:var(--accent); white-space:nowrap;}
-  .sheet-price.cheap{color:var(--accent2);}
-  .sheet-price.expensive{color:var(--danger);}
-  .sheet-meta{display:flex; gap:16px; margin:14px 0 16px; font-size:13px; color:var(--sub);}
-  .sheet-meta b{color:var(--text); font-weight:600;}
-  .sheet-actions{display:flex; gap:10px;}
-  .btn{
-    flex:1; border:1px solid var(--line); background:var(--bg3); color:var(--text); padding:13px;
-    border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
-    display:flex; align-items:center; justify-content:center; gap:6px; transition:opacity .15s;
-  }
-  .btn:active{opacity:.8;}
-  .btn.primary{background:var(--accent2); border-color:var(--accent2); color:#08211d;}
-  .close-sheet{
-    width:32px; height:32px; border-radius:50%; background:var(--bg3); border:1px solid var(--line);
-    color:var(--sub); font-size:14px; flex:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  }
-
-  /* List View */
-  .view-list{overflow-y:auto; -webkit-overflow-scrolling:touch;}
-  .list-toolbar{padding:14px 16px 6px; display:flex; flex-direction:column; gap:10px;}
-  .toolbar-row{display:flex; gap:8px; align-items:center;}
-  .toolbar-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--sub); flex:none; width:52px;}
-  .chips{display:flex; gap:6px; flex-wrap:wrap;}
-  .chip{
-    font-size:12px; background:var(--bg3); border:1px solid var(--line); color:var(--sub);
-    padding:6px 12px; border-radius:999px; cursor:pointer; user-select:none; white-space:nowrap;
-    font-family:inherit; transition:all .15s;
-  }
-  .chip.active{border-color:var(--accent); color:var(--accent); background:#1c1810;}
-  select.filter-select{
-    background:var(--bg3); border:1px solid var(--line); color:var(--text); border-radius:9px;
-    padding:8px 10px; font-size:13px; font-family:inherit; outline:none; flex:1;
-  }
-  .station-list{padding:6px 16px 24px; display:flex; flex-direction:column; gap:10px;}
-  .station-card{
-    background:var(--bg2); border:1px solid var(--line); border-radius:14px; padding:14px;
-    cursor:pointer; transition:border-color .15s;
-  }
-  .station-card:active{border-color:var(--accent);}
-  .sc-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
-  .sc-name{font-size:15px; font-weight:700; margin:0 0 2px; display:flex; align-items:center; gap:6px;}
-  .sc-brand{font-size:12px; color:var(--sub);}
-  .sc-price{font-family:var(--mono); font-size:19px; font-weight:700; color:var(--accent); white-space:nowrap;}
-  .sc-price.cheap{color:var(--accent2);}
-  .sc-price.expensive{color:var(--danger);}
-  .sc-meta{display:flex; gap:14px; margin:10px 0 12px; font-size:12px; color:var(--sub);}
-  .sc-meta b{color:var(--text); font-weight:600;}
-  .sc-actions{display:flex; gap:8px;}
-  .sc-actions .btn{padding:10px; font-size:13px;}
-  .empty-state{text-align:center; color:var(--sub); font-size:13px; padding:60px 20px;}
-
-  /* Bottom Nav */
-  nav.bottom-nav{
-    display:flex; background:var(--bg2); border-top:1px solid var(--line); flex:none; z-index:30;
-    padding-bottom:env(safe-area-inset-bottom); position:relative;
-  }
-  .nav-btn{
-    flex:1; background:transparent; border:none; color:var(--sub); padding:10px 6px 8px;
-    display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600;
-    cursor:pointer; font-family:inherit;
-  }
-  .nav-btn .nav-icon{font-size:20px;}
-  .nav-btn.active{color:var(--accent);}
-
-  /* Toast Notification */
-  .toast{
-    position:absolute; left:50%; top:14px; transform:translate(-50%,-140%); background:var(--bg2);
-    border:1px solid var(--line); color:var(--text); font-size:12.5px; padding:9px 16px; border-radius:999px;
-    box-shadow:0 6px 18px rgba(0,0,0,.5); z-index:2000; transition:transform .3s cubic-bezier(.32,.72,0,1);
-    white-space:nowrap; pointer-events:none;
-  }
-  .toast.show{transform:translate(-50%,0);}
-
-  /* Modulo Viaje */
-  #viajeView{overflow-y:auto; -webkit-overflow-scrolling:touch;}
-  #viajeView .wrap{max-width:520px;margin:0 auto;padding:20px 16px 32px;}
-  #viajeView header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
-  #viajeView header h1{font-size:19px;margin:0;letter-spacing:.2px;font-weight:700;}
-  #viajeView header .odo{font-family:var(--mono);color:var(--sub);font-size:11px;}
-  #viajeView .card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
-  #viajeView .row{display:flex;gap:10px;}
-  #viajeView .field{flex:1;position:relative;margin-bottom:12px;}
-  #viajeView label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);margin-bottom:6px;}
-  #viajeView input,#viajeView select{width:100%;background:var(--bg3);border:1px solid var(--line);color:var(--text);
+    min-height:100vh; overscroll-behavior:none;}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+  .wrap{max-width:520px;margin:0 auto;padding:22px 16px 60px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+  header h1{font-size:19px;margin:0;letter-spacing:.2px;font-weight:700;}
+  header .odo{font-family:var(--mono);color:var(--sub);font-size:11px;}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .row{display:flex;gap:10px;}
+  .field{flex:1;position:relative;margin-bottom:12px;}
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);margin-bottom:6px;}
+  input,select{width:100%;background:#0e1216;border:1px solid var(--line);color:var(--text);
     border-radius:9px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;}
-  #viajeView input:focus,#viajeView select:focus{border-color:var(--accent);}
-  #viajeView input[type=number]{font-family:var(--mono);}
-  #viajeView .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
-  #viajeView .chip{font-size:12px;background:var(--bg3);border:1px solid var(--line);color:var(--sub);
+  input:focus,select:focus{border-color:var(--accent);}
+  input[type=number]{font-family:var(--mono);}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .chip{font-size:12px;background:#0e1216;border:1px solid var(--line);color:var(--sub);
     padding:5px 10px;border-radius:999px;cursor:pointer;user-select:none;}
-  #viajeView .chip:active{background:#20262d;}
-  #viajeView .swap{align-self:center;background:var(--bg3);border:1px solid var(--line);color:var(--accent);
+  .chip:active{background:#20262d;}
+  .swap{align-self:center;background:#0e1216;border:1px solid var(--line);color:var(--accent);
     width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer;flex:none;margin-top:-2px;}
-  #viajeView .suggest{position:absolute;top:100%;left:0;right:0;background:var(--bg3);border:1px solid var(--line);
+  .suggest{position:absolute;top:100%;left:0;right:0;background:#0e1216;border:1px solid var(--line);
     border-top:none;border-radius:0 0 9px 9px;z-index:5;max-height:180px;overflow:auto;display:none;}
-  #viajeView .suggest div{padding:9px 12px;font-size:13px;color:var(--text);border-top:1px solid var(--line);cursor:pointer;}
-  #viajeView .suggest div:first-child{border-top:none;}
-  #viajeView .suggest div:active{background:#20262d;}
-  #viajeView .cars{display:flex;gap:8px;}
-  #viajeView .cars button{flex:1;background:var(--bg3);border:1px solid var(--line);color:var(--sub);
-    padding:12px 6px;border-radius:999px;font-size:13px;cursor:pointer;}
-  #viajeView .cars button.active{border-color:var(--accent);color:var(--accent);background:#1c1810;}
-  #viajeView .mini{font-size:11px;color:var(--sub);margin-top:4px;}
-  #viajeView .liveRow{display:flex;align-items:center;gap:8px;margin-top:6px;}
-  #viajeView .liveBtn{background:var(--bg3);border:1px solid var(--line);color:var(--accent2);font-size:12px;
+  .suggest div{padding:9px 12px;font-size:13px;color:var(--text);border-top:1px solid var(--line);cursor:pointer;}
+  .suggest div:first-child{border-top:none;}
+  .suggest div:active{background:#20262d;}
+  .cars{display:flex;gap:8px;}
+  .cars button{flex:1;background:#0e1216;border:1px solid var(--line);color:var(--sub);
+    padding:12px 6px;border-radius:9px;font-size:13px;cursor:pointer;}
+  .cars button.active{border-color:var(--accent);color:var(--accent);background:#1c1810;}
+  .mini{font-size:11px;color:var(--sub);margin-top:4px;}
+  .liveRow{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .liveBtn{background:#0e1216;border:1px solid var(--line);color:var(--accent2);font-size:12px;
     padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;}
-  #viajeView .liveBtn:disabled{opacity:.5;}
-  #viajeView .switch{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
-  #viajeView .switch input{width:auto;accent-color:var(--accent);transform:scale(1.2);}
-  #viajeView .calc{width:100%;background:var(--accent);color:#1a1305;border:none;border-radius:11px;
+  .liveBtn:disabled{opacity:.5;}
+  .switch{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .switch input{width:auto;accent-color:var(--accent);transform:scale(1.2);}
+  .calc{width:100%;background:var(--accent);color:#1a1305;border:none;border-radius:11px;
     padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;}
-  #viajeView .calc:active{opacity:.85;}
-  #viajeView .result{display:none;}
-  #viajeView .result.show{display:block;}
-  #viajeView .total{font-family:var(--mono);font-size:38px;font-weight:700;color:var(--accent);text-align:center;margin:6px 0 2px;}
-  #viajeView .totalsub{text-align:center;color:var(--sub);font-size:12px;margin-bottom:14px;}
-  #viajeView .breakdown div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:14px;}
-  #viajeView .breakdown div:first-child{border-top:none;}
-  #viajeView .breakdown span:last-child{font-family:var(--mono);color:var(--text);}
-  #viajeView .breakdown span:first-child{color:var(--sub);}
-  #viajeView .err{color:var(--danger);font-size:13px;text-align:center;padding:6px 0;display:none;}
-
+  .calc:active{opacity:.85;}
+  .result{display:none;}
+  .result.show{display:block;}
+  .total{font-family:var(--mono);font-size:38px;font-weight:700;color:var(--accent);text-align:center;margin:6px 0 2px;}
+  .totalsub{text-align:center;color:var(--sub);font-size:12px;margin-bottom:14px;}
+  .breakdown div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:14px;}
+  .breakdown div:first-child{border-top:none;}
+  .breakdown span:last-child{font-family:var(--mono);color:var(--text);}
+  .breakdown span:first-child{color:var(--sub);}
+  .err{color:var(--danger);font-size:13px;text-align:center;padding:6px 0;display:none;}
   .hide{display:none !important;}
 </style>
 </head>
 <body>
-<div class="app">
-
-  <!-- Header -->
-  <header class="topbar" id="topbarGas">
-    <h1>⛽ Gasolineras</h1>
-    <div class="topbar-actions">
-      <button class="icon-btn" id="refreshBtn" title="Actualizar datos">🔄</button>
-    </div>
+<div class="wrap">
+  <header>
+    <h1>⛽ Despesas Viagem</h1>
+    <span class="odo" id="odo">--</span>
   </header>
 
-  <!-- Segment Selector -->
-  <div class="segment-wrap" id="segmentWrap">
-    <div class="segment">
-      <button data-view="map" class="active">🗺️ Mapa</button>
-      <button data-view="list">📋 Lista</button>
+  <div class="card">
+    <div class="field">
+      <label>Origem</label>
+      <input id="origen" autocomplete="off" placeholder="Morada de origem">
+      <div class="suggest" id="sugOrigen"></div>
+      <div class="chips">
+        <div class="chip" data-set="origen" data-place="casa">Casa</div>
+        <div class="chip" data-set="origen" data-place="sevilla">Sevilha</div>
+        <div class="chip" data-set="origen" data-place="vilanova">Vila Nova</div>
+      </div>
     </div>
+
+    <div style="display:flex;justify-content:center;margin:-6px 0 8px;">
+      <button class="swap" id="swapBtn" title="Invertir">⇄</button>
+    </div>
+
+    <div class="field" style="margin-bottom:4px;">
+      <label>Destino</label>
+      <input id="destino" autocomplete="off" placeholder="Morada de destino">
+      <div class="suggest" id="sugDestino"></div>
+      <div class="chips">
+        <div class="chip" data-set="destino" data-place="casa">Casa</div>
+        <div class="chip" data-set="destino" data-place="sevilla">Sevilha</div>
+        <div class="chip" data-set="destino" data-place="vilanova">Vila Nova</div>
+      </div>
+    </div>
+
+    <label class="switch" style="margin-top:12px;">
+      <span style="font-size:13px;color:var(--text);">Ida e volta</span>
+      <input type="checkbox" id="roundtrip">
+    </label>
   </div>
 
-  <!-- Content Container -->
-  <div class="content">
-
-    <!-- View: MAP -->
-    <div class="view active" id="view-map">
-      <div id="map"></div>
+  <div class="card">
+    <label>Carro</label>
+    <div class="cars">
+      <button data-car="arona" class="active">SEAT Arona</button>
+      <button data-car="troc">VW T-Roc</button>
       
-      <!-- FAB Recalculate Position -->
-      <button class="fab locate" id="locateBtn" title="Minha localização">📍</button>
-
-      <!-- Bottom Sheet Modal for Map Pins -->
-      <div class="sheet-backdrop" id="sheetBackdrop"></div>
-      <div class="sheet" id="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-top">
-          <div>
-            <h3 class="sheet-title" id="sheetName">--</h3>
-            <span class="sheet-brand" id="sheetBrand">--</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span class="sheet-price" id="sheetPrice">--</span>
-            <button class="close-sheet" id="closeSheetBtn">✕</button>
-          </div>
-        </div>
-        <div class="sheet-meta">
-          <span>📍 <b id="sheetDist">-- km</b></span>
-          <span>🕒 <b id="sheetUpdated">--</b></span>
-        </div>
-        <div class="sheet-actions">
-          <button class="btn primary" id="sheetWazeBtn">🧭 Abrir no Waze</button>
-        </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field">
+        <label>Consumo (l/100km)</label>
+        <input type="number" step="0.1" id="consumo" value="6.2">
       </div>
     </div>
-
-    <!-- View: LIST -->
-    <div class="view" id="view-list">
-      <div class="list-toolbar">
-        <div class="toolbar-row">
-          <span class="toolbar-label">Ordenar</span>
-          <div class="chips" id="sortChips">
-            <div class="chip active" data-sort="distancia">Distância</div>
-            <div class="chip" data-sort="precio">Preço</div>
-            <div class="chip" data-sort="marca">Marca</div>
-          </div>
-        </div>
-        <div class="toolbar-row">
-          <span class="toolbar-label">Marca</span>
-          <select class="filter-select" id="brandFilter">
-            <option value="all">Todas as marcas</option>
-          </select>
-        </div>
-        <div class="toolbar-row">
-          <span class="toolbar-label">Raio</span>
-          <div class="chips" id="distChips">
-            <div class="chip" data-dist="all">Todas</div>
-            <div class="chip" data-dist="5">&lt; 5 km</div>
-            <div class="chip active" data-dist="10">&lt; 10 km</div>
-            <div class="chip" data-dist="20">&lt; 20 km</div>
-          </div>
-        </div>
-      </div>
-      <div class="station-list" id="stationList"></div>
-    </div>
-
-    <!-- View: VIAJE -->
-    <div class="view" id="viajeView">
-      <div class="wrap">
-        <header>
-          <h1>⛽ Despesas Viagem</h1>
-          <span class="odo" id="odo">--</span>
-        </header>
-
-        <div class="card">
-          <div class="field">
-            <label>Origem</label>
-            <input id="origen" autocomplete="off" placeholder="Morada de origem">
-            <div class="suggest" id="sugOrigen"></div>
-            <div class="chips">
-              <div class="chip" data-set="origen" data-place="casa">Casa</div>
-              <div class="chip" data-set="origen" data-place="sevilla">Sevilha</div>
-              <div class="chip" data-set="origen" data-place="vilanova">Vila Nova</div>
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:center;margin:-6px 0 8px;">
-            <button class="swap" id="swapBtn" title="Invertir">⇄</button>
-          </div>
-
-          <div class="field" style="margin-bottom:4px;">
-            <label>Destino</label>
-            <input id="destino" autocomplete="off" placeholder="Morada de destino">
-            <div class="suggest" id="sugDestino"></div>
-            <div class="chips">
-              <div class="chip" data-set="destino" data-place="casa">Casa</div>
-              <div class="chip" data-set="destino" data-place="sevilla">Sevilha</div>
-              <div class="chip" data-set="destino" data-place="vilanova">Vila Nova</div>
-            </div>
-          </div>
-
-          <label class="switch" style="margin-top:12px;">
-            <span style="font-size:13px;color:var(--text);">Ida e volta</span>
-            <input type="checkbox" id="roundtrip">
-          </label>
-        </div>
-
-        <div class="card">
-          <label>Carro</label>
-          <div class="cars">
-            <button data-car="arona" class="active">SEAT Arona</button>
-            <button data-car="troc">VW T-Roc</button>
-          </div>
-          <div class="row" style="margin-top:12px;">
-            <div class="field">
-              <label>Consumo (l/100km)</label>
-              <input type="number" step="0.1" id="consumo" value="6.2">
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <label>Abastecimento</label>
-          <div class="row">
-            <div class="field">
-              <select id="pais">
-                <option value="es">Espanha — Repsol Cartaya (A49)</option>
-                <option value="pt">Portugal — Moeve Almodôvar (A2)</option>
-                <option value="pt_repsol">Portugal — Repsol Porto Salvo</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div class="field" style="margin-bottom:4px;">
-              <label>Preço combustível (€/l)</label>
-              <input type="number" step="0.001" id="precio" value="1.65">
-            </div>
-          </div>
-          <div class="liveRow">
-            <button class="liveBtn" id="liveBtn">🔄 Preço em tempo real</button>
-            <span class="mini" id="liveInfo"></span>
-          </div>
-        </div>
-
-        <div class="card">
-          <label>Portagem</label>
-          <div class="row" id="peajeSingleWrap">
-            <div class="field" style="margin-bottom:0;">
-              <label>Portagem percurso (€)</label>
-              <input type="number" step="0.1" id="peaje" value="0">
-            </div>
-          </div>
-          <div class="row hide" id="peajeDualWrap">
-            <div class="field">
-              <label>Portagem ida (€)</label>
-              <input type="number" step="0.1" id="peajeIda" value="0">
-            </div>
-            <div class="field">
-              <label>Portagem volta (€)</label>
-              <input type="number" step="0.1" id="peajeVuelta" value="0">
-            </div>
-          </div>
-          <div class="mini" id="peajeInfo"></div>
-        </div>
-
-        <button class="calc" id="calcBtn">Calcular viagem</button>
-        <div class="err" id="err"></div>
-
-        <div class="card result" id="result">
-          <div class="total" id="total">0,00 €</div>
-          <div class="totalsub" id="totalsub">-- km · -- h</div>
-          <div class="breakdown">
-            <div><span>Distância</span><span id="rDist">--</span></div>
-            <div><span>Custo combustível</span><span id="rFuel">--</span></div>
-            <div><span>Portagens</span><span id="rPeaje">--</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 
-  <!-- Bottom Nav Bar -->
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-nav="gas" id="gasBtn"><span class="nav-icon">⛽</span>Gasolineras</button>
-    <button class="nav-btn" data-nav="viaje" id="viajeBtn"><span class="nav-icon">🚗</span>Viaje</button>
-  </nav>
+  <div class="card">
+    <label>Abastecimento</label>
+    <div class="row">
+      <div class="field">
+        <select id="pais">
+          <option value="es">Espanha — Repsol Cartaya (A49)</option>
+          <option value="pt">Portugal — Moeve Almodôvar (A2)</option>
+          <option value="pt_repsol">Portugal — Repsol Porto Salvo</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="margin-bottom:4px;">
+        <label>Preço combustível (€/l)</label>
+        <input type="number" step="0.001" id="precio" value="1.65">
+      </div>
+    </div>
+    <div class="liveRow">
+      <button class="liveBtn" id="liveBtn">🔄 Preço em tempo real</button>
+      <span class="mini" id="liveInfo"></span>
+    </div>
+  </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="card">
+    <label>Portagem</label>
+    <div class="row" id="peajeSingleWrap">
+      <div class="field" style="margin-bottom:0;">
+        <label>Portagem percurso (€)</label>
+        <input type="number" step="0.1" id="peaje" value="0">
+      </div>
+    </div>
+    <div class="row hide" id="peajeDualWrap">
+      <div class="field">
+        <label>Portagem ida (€)</label>
+        <input type="number" step="0.1" id="peajeIda" value="0">
+      </div>
+      <div class="field">
+        <label>Portagem volta (€)</label>
+        <input type="number" step="0.1" id="peajeVuelta" value="0">
+      </div>
+    </div>
+    <div class="mini" id="peajeInfo"></div>
+  </div>
+
+  <button class="calc" id="calcBtn">Calcular viagem</button>
+  <div class="err" id="err"></div>
+
+  <div class="card result" id="result">
+    <div class="total" id="total">0,00 €</div>
+    <div class="totalsub" id="totalsub">-- km · -- h</div>
+    <div class="breakdown">
+      <div><span>Distância</span><span id="rDist">--</span></div>
+      <div><span>Custo combustível</span><span id="rFuel">--</span></div>
+      <div><span>Portagens</span><span id="rPeaje">--</span></div>
+    </div>
+  </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ============================================================
-   GASOLINERAS — Application Logic
-   ============================================================ */
-const LISBOA_CENTER = { lat: 38.7093, lon: -9.1707 };
+/* ---------- Datos base (editables por el usuario en los campos) ---------- */
+const CARS = { arona: {label:'SEAT Arona', consumo:6.2}, troc: {label:'VW T-Roc', consumo:5.5} };
+const PRICES_DEFAULT = { es: 1.65, pt: 1.94, pt_repsol: 1.95 };
 
-const state = {
-  view: 'map',
-  lastGasView: 'map',
-  stations: [],
-  userLocation: null,
-  selectedId: null,
-  sortBy: 'distancia',
-  filterBrand: 'all',
-  filterDist: '10', // Predeterminado a 10 km
-  map: null,
-  markers: {},
-  userMarker: null,
-  loadedDistricts: new Set()
+const PLACES = {
+  casa:     { label:'Casa',      address:'Av. Infante Santo 350, Lisboa, Portugal', lat:38.7093, lon:-9.1707 },
+  sevilla:  { label:'Sevilla',   address:'Calle Cardenal Bueno Monreal 12, Sevilla, España', lat:37.3806, lon:-5.9772 },
+  vilanova: { label:'Vila Nova', address:'Beco Azinhaga do Canal 2b, Portugal', lat:37.7256, lon:-8.7857 }
 };
 
-function formatRelativeTime(dateString) {
-  if (!dateString) return 'Atualizado recentemente';
-  const date = new Date(dateString.replace(' ', 'T'));
-  if (isNaN(date.getTime())) return dateString;
-  const diffMins = Math.floor((new Date() - date) / 60000);
-  if (diffMins < 1) return 'Agora mesmo';
-  if (diffMins < 60) return `Há ${diffMins} min`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `Há ${diffHours} h`;
-  return `Há ${Math.floor(diffHours / 24)} dias`;
+// Peajes DIRECCIONALES (origen>destino), en euros
+const TOLLS = {
+  'casa>sevilla': 23.80,
+  'sevilla>casa': 26.05,   // 23,80 + 2,25
+  'casa>vilanova': 9.05,
+  'vilanova>casa': 9.05
+};
+
+/* ---------- Precioil (precios en tiempo real) ---------- */
+const PRECIOIL_BASE = 'https://api.precioil.es';
+const PRECIOIL_API_KEY = 'pk_live_OlM09w3Hpff3jVgLJ2Zg4YNEuD-YalI4KZQ-YR817CE';
+// Coordenadas y filtro de nombre para localizar la estación exacta una sola vez (luego se cachea el idEstacion)
+const PRECIOIL_STATIONS = {
+  es: { name:'Repsol Cartaya (A49)', lat:37.322694, lon:-7.114472, match:'REPSOL' },
+  pt: { name:'Moeve Almodôvar (A2)', lat:37.535779, lon:-8.184768, match:'MOEVE' },
+  pt_repsol: {name:'Repsol Porto Salvo', lat:38.72953, lon:-9.30175,match:'REPSOL'}
+};
+
+async function precioilFetch(path){
+  const r = await fetch(PRECIOIL_BASE + path, { headers: { 'X-API-Key': PRECIOIL_API_KEY } });
+  if(!r.ok) throw new Error('API precioil ' + r.status);
+  return r.json();
 }
 
-// Mapeo rápido de coordenadas aproximadas a ID Distrito de Portugal
-function getDistrictIdByCoords(lat, lon) {
-  if (lat < 37.5) return 8;                   // Faro
-  if (lat < 38.2) return 2;                   // Beja
-  if (lat < 38.75 && lon < -9.0) return 11;    // Lisboa
-  if (lat < 38.75) return 15;                 // Setúbal
-  if (lat < 39.2) return 14;                  // Santarém
-  if (lat < 39.8) return 10;                  // Leiria
-  if (lat < 40.5 && lon < -8.0) return 6;     // Coimbra
-  if (lat < 40.5) return 5;                  // Castelo Branco
-  if (lat < 41.0) return 1;                  // Aveiro
-  if (lat >= 41.0 && lon < -8.2) return 13;   // Porto
-  if (lat >= 41.0 && lon < -7.8) return 3;    // Braga
-  if (lat >= 41.5 && lon < -8.0) return 16;   // Viana do Castelo
-  return 11; // Por defecto Lisboa
+// Localiza idEstacion por radio+nombre y lo cachea (evita repetir la búsqueda geográfica cada vez)
+async function resolveEstacionId(pais){
+  const cached = store.get('precioil_id_'+pais, null);
+  if(cached) return cached;
+  const st = PRECIOIL_STATIONS[pais];
+  const data = await precioilFetch(`/estaciones/radio?lat=${st.lat}&lon=${st.lon}&radio=5&fields=basic`);
+  const list = Array.isArray(data) ? data : (data.items || data.estaciones || []);
+  const found = list.find(e => (e.nombreEstacion||'').toUpperCase().includes(st.match)) || list[0];
+  if(!found) throw new Error('Estación no encontrada en el radio configurado');
+  store.set('precioil_id_'+pais, found.idEstacion);
+  return found.idEstacion;
 }
 
-/* API DGEG Integration por Distrito — Filtrado Estricto de Gasolina 95 */
-async function fetchDistrictStations(distritoId) {
-  if (state.loadedDistricts.has(distritoId)) return;
-  state.loadedDistricts.add(distritoId);
+async function fetchPrecioLive(pais){
+  const id = await resolveEstacionId(pais);
+  const det = await precioilFetch(`/estaciones/detalles/${id}`);
+  const precio = parseFloat(det.Gasolina95 ?? det.Simples95);
+  if(isNaN(precio)) throw new Error('Respuesta sin precio válido');
+  return { precio, nombre: det.nombreEstacion, updatedAt: det.updatedAt };
+}
+
+let state = { car:'arona', origen:null, destino:null };
+
+/* ---------- Persistencia ligera ---------- */
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('gv_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ localStorage.setItem('gv_'+k, JSON.stringify(v)); }
+};
+
+/* ---------- Utilidades ---------- */
+function fmtEUR(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function tollKey(aId,bId){ return (aId && bId) ? (aId+'>'+bId) : null; }
+
+// Identifica el lugar predefinido más cercano a un punto (chip, autocompletado o geocodificado directo)
+// Esto es lo que corrige el peaje: antes solo funcionaba si el punto venía de un chip con id fijo.
+function nearestPlaceId(pt){
+  if(!pt) return null;
+  if(pt.id) return pt.id;
+  let best=null, bestD=Infinity;
+  for(const [id,p] of Object.entries(PLACES)){
+    const d = Math.hypot(pt.lat-p.lat, pt.lon-p.lon);
+    if(d<bestD){ bestD=d; best=id; }
+  }
+  return bestD < 0.03 ? best : null; // ~3km de tolerancia
+}
+
+/* ---------- Geocoding (Nominatim, sin API key) — solo refina coords, no bloquea ---------- */
+const geocodeCache = store.get('geocache', {});
+async function geocode(query){
+  if(geocodeCache[query]) return geocodeCache[query];
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query);
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.length) throw new Error('No encontrado: '+query);
+  const res = { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon), label: j[0].display_name };
+  geocodeCache[query] = res;
+  store.set('geocache', geocodeCache);
+  return res;
+}
+async function searchPlaces(query){
+  if(query.length < 3) return [];
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' + encodeURIComponent(query);
+  const r = await fetch(url);
+  return await r.json();
+}
+
+/* ---------- Autocompletado ---------- */
+function setupAutocomplete(inputId, sugId, key){
+  const input = document.getElementById(inputId);
+  const sug = document.getElementById(sugId);
+  let timer=null;
+  input.addEventListener('input', ()=>{
+    state[key] = null;
+    updatePeajeSugerido();
+    clearTimeout(timer);
+    const q = input.value.trim();
+    timer = setTimeout(async ()=>{
+      if(q.length<3){ sug.style.display='none'; return; }
+      try{
+        const results = await searchPlaces(q);
+        if(!results.length){ sug.style.display='none'; return; }
+        sug.innerHTML='';
+        results.forEach(r=>{
+          const d=document.createElement('div');
+          d.textContent = r.display_name;
+          d.onclick=()=>{
+            input.value = r.display_name;
+            state[key] = { id:null, lat:parseFloat(r.lat), lon:parseFloat(r.lon), label:r.display_name };
+            sug.style.display='none';
+            updatePeajeSugerido();
+          };
+          sug.appendChild(d);
+        });
+        sug.style.display='block';
+      }catch(e){ sug.style.display='none'; }
+    }, 450);
+  });
+  input.addEventListener('blur', ()=> setTimeout(()=> sug.style.display='none', 200));
+}
+setupAutocomplete('origen','sugOrigen','origen');
+setupAutocomplete('destino','sugDestino','destino');
+
+/* ---------- Chips de lugares predefinidos ---------- */
+function selectPlace(target, placeId){
+  const place = PLACES[placeId];
+  const input = document.getElementById(target);
+  input.value = place.label + ' — ' + place.address;
+  state[target] = { id:placeId, lat:place.lat, lon:place.lon, label:place.label };
+  updatePeajeSugerido();
+  geocode(place.address).then(geo=>{
+    if(state[target] && state[target].id===placeId){ state[target].lat=geo.lat; state[target].lon=geo.lon; }
+  }).catch(()=>{});
+}
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=> selectPlace(chip.dataset.set, chip.dataset.place));
+});
+
+/* ---------- Swap origen/destino ---------- */
+document.getElementById('swapBtn').addEventListener('click', ()=>{
+  const oInput = document.getElementById('origen');
+  const dInput = document.getElementById('destino');
+  [oInput.value, dInput.value] = [dInput.value, oInput.value];
+  [state.origen, state.destino] = [state.destino, state.origen];
+  updatePeajeSugerido();
+});
+
+/* ---------- Selección de coche ---------- */
+document.querySelectorAll('.cars button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.cars button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.car = btn.dataset.car;
+    const saved = store.get('consumo_'+state.car, null);
+    document.getElementById('consumo').value = saved ?? CARS[state.car].consumo;
+  });
+});
+document.getElementById('consumo').addEventListener('change', e=>{
+  store.set('consumo_'+state.car, parseFloat(e.target.value));
+});
+
+/* ---------- País / precio combustible ---------- */
+const paisSel = document.getElementById('pais');
+const precioInput = document.getElementById('precio');
+const liveInfo = document.getElementById('liveInfo');
+async function actualizarPrecio() {
+  const pais = paisSel.value;
+  liveInfo.textContent = 'A consultar…';
 
   try {
-    const response = await fetch(
-      `https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb/PesquisarPostos?idDistrito=${distritoId}&qtdPorPagina=99999&pagina=1`
-    );
-    const data = await response.json();
+    const { precio, nombre, updatedAt } = await fetchPrecioLive(pais);
 
-    if (data.status && Array.isArray(data.resultado)) {
-      const newStations = [];
+    precioInput.value = precio.toFixed(3);
+    store.set('precio_' + pais, precio);
 
-      data.resultado.forEach(item => {
-        let precio95 = null;
+    const hora = updatedAt
+      ? new Date(updatedAt).toLocaleTimeString('pt-PT', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : '';
 
-        // 1. Si la API devuelve el array de combustibles del puesto
-        if (Array.isArray(item.Combustiveis) && item.Combustiveis.length > 0) {
-          const comb95 = item.Combustiveis.find(c => {
-            const nombre = (c.TipoCombustivel || c.Combustivel || "").toLowerCase();
-            return nombre.includes('gasolina 95') || nombre.includes('gasolina especial 95');
-          });
-          if (comb95 && comb95.Preco) {
-            precio95 = parseFloat(comb95.Preco.replace("€", "").replace(",", ".").trim());
-          }
-        }
-
-        // 2. Si no viene en el array, verificar si el objeto principal es explícitamente Gasolina 95
-        if (!precio95 && item.Combustivel) {
-          const nombrePrincipal = item.Combustivel.toLowerCase();
-          if (nombrePrincipal.includes('gasolina 95') && item.Preco) {
-            precio95 = parseFloat(item.Preco.replace("€", "").replace(",", ".").trim());
-          }
-        }
-
-        // 3. Fallback: Si no hay desglose pero hay un precio base
-        if (!precio95 && item.Preco) {
-          precio95 = parseFloat(item.Preco.replace("€", "").replace(",", ".").trim());
-        }
-
-        // Solo añadimos la gasolinera si encontramos un precio válido
-        if (precio95 && !isNaN(precio95) && precio95 > 0) {
-          newStations.push({
-            id: item.Id,
-            nombre: item.Nome || "Posto",
-            marca: item.Marca || "Outra",
-            direccao: item.Morada || "",
-            lat: parseFloat(item.Latitude),
-            lon: parseFloat(item.Longitude),
-            precio: precio95, // <--- Este precio es el único que leerá el mapa
-            actualizacion: formatRelativeTime(item.DataAtualizacao)
-          });
-        }
-      });
-
-      // Fusionar evitando duplicados y actualizando el precio si ya existía
-      newStations.forEach(st => {
-        const index = state.stations.findIndex(s => s.id === st.id);
-        if (index >= 0) {
-          state.stations[index] = st;
-        } else {
-          state.stations.push(st);
-        }
-      });
-
-      populateBrandFilter();
-    }
-  } catch (err) {
-    console.error('Error cargando distrito:', distritoId, err);
+    liveInfo.textContent = `${nombre} · ${hora}`;
+  } catch (e) {
+    liveInfo.textContent = 'Erro ao atualizar';
   }
 }
 
-async function loadInitialStations(){
-  const ref = getReferencePoint();
-  const districtId = getDistrictIdByCoords(ref.lat, ref.lon);
-  await fetchDistrictStations(districtId);
+function loadPrecioPais() {
+  const pais = paisSel.value;
+  const saved = store.get('precio_' + pais, null);
+  precioInput.value = saved ?? PRICES_DEFAULT[pais];
+  liveInfo.textContent = '';
 }
 
-async function refreshStations(){
-  const btn = document.getElementById('refreshBtn');
-  btn.classList.add('spinning');
-  state.loadedDistricts.clear();
-  state.stations = [];
-  await loadInitialStations();
-  renderMap();
-  renderList();
-  if(state.selectedId) openStationSheet(state.selectedId, false);
-  btn.classList.remove('spinning');
-  showToast('Dados e preços atualizados');
-}
+paisSel.addEventListener('change', () => {
+  loadPrecioPais();
+  actualizarPrecio();
+});
 
-/* Distancia Haversine (km) */
-function calculateDistance(lat1, lon1, lat2, lon2){
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
+precioInput.addEventListener('change', e => {
+  store.set('precio_' + paisSel.value, parseFloat(e.target.value));
+});
 
-function getReferencePoint(){
-  return state.userLocation || LISBOA_CENTER;
-}
+loadPrecioPais();
+actualizarPrecio();
 
-function distanceToStation(station){
-  const ref = getReferencePoint();
-  return calculateDistance(ref.lat, ref.lon, station.lat, station.lon);
-}
-
-function getPriceRange(){
-  if(!state.stations.length) return { min: 0, max: 0 };
-  const precios = state.stations.map(s => s.precio).filter(p => p > 0);
-  return { min: Math.min(...precios), max: Math.max(...precios) };
-}
-
-function getPriceTier(precio){
-  const { min, max } = getPriceRange();
-  const pos = (precio - min) / ((max - min) || 0.001);
-  if(pos <= 0.33) return 'cheap';
-  if(pos <= 0.66) return 'mid';
-  return 'expensive';
-}
-
-function tierColor(tier){
-  if(tier === 'cheap') return '#4fb0a5';
-  if(tier === 'expensive') return '#d9695f';
-  return '#e8b13d';
-}
-
-function getFilteredSortedStations(){
-  let list = state.stations.map(s => ({ ...s, _dist: distanceToStation(s), _tier: getPriceTier(s.precio) }));
-
-  if(state.filterBrand !== 'all'){
-    list = list.filter(s => s.marca.toLowerCase() === state.filterBrand.toLowerCase());
+/* ---------- Precio en tiempo real (precioil) ---------- */
+document.getElementById('liveBtn').addEventListener('click', async ()=>{
+  const pais = paisSel.value;
+  const btn = document.getElementById('liveBtn');
+  btn.disabled = true; liveInfo.textContent = 'A consultar…';
+  try{
+    const { precio, nombre, updatedAt } = await fetchPrecioLive(pais);
+    precioInput.value = precio.toFixed(3);
+    store.set('precio_'+pais, precio);
+    const hora = updatedAt ? new Date(updatedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) : '';
+    liveInfo.textContent = `${nombre || PRECIOIL_STATIONS[pais].name} · ${hora}`;
+  }catch(e){
+    liveInfo.textContent = 'Erro: ' + e.message;
+  }finally{
+    btn.disabled = false;
   }
-  if(state.filterDist !== 'all'){
-    const max = parseFloat(state.filterDist);
-    list = list.filter(s => s._dist <= max);
-  }
+});
 
-  if(state.sortBy === 'precio'){
-    list.sort((a,b) => a.precio - b.precio);
-  } else if(state.sortBy === 'marca'){
-    list.sort((a,b) => a.marca.localeCompare(b.marca));
+/* ---------- Ida y vuelta: alterna peaje simple / doble ---------- */
+const roundtripChk = document.getElementById('roundtrip');
+const peajeSingleWrap = document.getElementById('peajeSingleWrap');
+const peajeDualWrap = document.getElementById('peajeDualWrap');
+roundtripChk.addEventListener('change', ()=>{
+  peajeSingleWrap.classList.toggle('hide', roundtripChk.checked);
+  peajeDualWrap.classList.toggle('hide', !roundtripChk.checked);
+  updatePeajeSugerido();
+});
+
+/* ---------- Peaje sugerido según ruta (direccional) ---------- */
+const peajeInput = document.getElementById('peaje');
+const peajeIdaInput = document.getElementById('peajeIda');
+const peajeVueltaInput = document.getElementById('peajeVuelta');
+const peajeInfo = document.getElementById('peajeInfo');
+
+function updatePeajeSugerido(){
+  const aId = nearestPlaceId(state.origen);
+  const bId = nearestPlaceId(state.destino);
+  const keyIda = tollKey(aId,bId);
+  const keyVuelta = tollKey(bId,aId);
+
+  if(roundtripChk.checked){
+    const ida = TOLLS[keyIda]; const vuelta = TOLLS[keyVuelta];
+    peajeIdaInput.value = store.get('peaje_'+keyIda, ida ?? 0);
+    peajeVueltaInput.value = store.get('peaje_'+keyVuelta, vuelta ?? 0);
+    peajeIdaInput.dataset.key = keyIda || '';
+    peajeVueltaInput.dataset.key = keyVuelta || '';
+    peajeInfo.textContent = (ida!==undefined) ? 'Portagens habituais deste percurso (editáveis)' : 'Sem portagem predefinida para este percurso';
   } else {
-    list.sort((a,b) => a._dist - b._dist);
-  }
-  return list;
-}
-
-/* Leaflet Map Rendering */
-function initMap(){
-  state.map = L.map('map', { zoomControl:false, attributionControl:true })
-    .setView([LISBOA_CENTER.lat, LISBOA_CENTER.lon], 13);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap'
-  }).addTo(state.map);
-
-  L.control.zoom({ position:'bottomleft' }).addTo(state.map);
-
-  // Al mover el mapa se descargan automáticamente los distritos visibles y se redibujan marcadores
-  state.map.on('moveend', async () => {
-    const center = state.map.getCenter();
-    const distId = getDistrictIdByCoords(center.lat, center.lng);
-    if(!state.loadedDistricts.has(distId)){
-      await fetchDistrictStations(distId);
-    }
-    renderMap();
-    renderList();
-  });
-}
-
-function createStationIcon(station){
-  const color = tierColor(station._tier);
-  const selectedClass = state.selectedId === station.id ? ' is-selected' : '';
-  return L.divIcon({
-    className: 'station-marker',
-    html: `<div class="pin${selectedClass}" style="--pin-color:${color}">${station.precio.toFixed(3)}€</div>`,
-    iconSize: [68, 38],
-    iconAnchor: [34, 38],
-  });
-}
-
-function renderMap(){
-  if(!state.map) return;
-
-  const bounds = state.map.getBounds();
-
-  // Limpiar marcadores viejos
-  Object.values(state.markers).forEach(m => state.map.removeLayer(m));
-  state.markers = {};
-
-  // Dibujar solo las estaciones que están dentro del área visible del mapa
-  const visibleStations = state.stations.filter(s => bounds.contains([s.lat, s.lon]));
-
-  visibleStations.forEach(station => {
-    const stationData = { ...station, _dist: distanceToStation(station), _tier: getPriceTier(station.precio) };
-    const marker = L.marker([station.lat, station.lon], { icon: createStationIcon(stationData) });
-    
-    marker.on('click', (e) => {
-      L.DomEvent.stopPropagation(e);
-      openStationSheet(station.id, true);
-    });
-    
-    marker.addTo(state.map);
-    state.markers[station.id] = marker;
-  });
-
-  renderUserMarker();
-}
-
-function renderUserMarker(){
-  if(state.userMarker){ state.map.removeLayer(state.userMarker); state.userMarker = null; }
-  if(!state.userLocation) return;
-  const icon = L.divIcon({
-    className: 'user-dot-wrap',
-    html: '<div class="user-dot"></div>',
-    iconSize:[16,16], iconAnchor:[8,8],
-  });
-  state.userMarker = L.marker([state.userLocation.lat, state.userLocation.lon], { icon, zIndexOffset:1000 }).addTo(state.map);
-}
-
-/* Bottom Sheet Handler */
-function openStationSheet(id, recenter = true){
-  state.selectedId = id;
-  const station = state.stations.find(s => s.id === id);
-  if(!station) return;
-
-  const dist = distanceToStation(station);
-  const tier = getPriceTier(station.precio);
-
-  document.getElementById('sheetName').textContent = station.nombre;
-  document.getElementById('sheetBrand').textContent = `${station.marca} · ${station.direccao}`;
-  
-  const priceEl = document.getElementById('sheetPrice');
-  priceEl.textContent = station.precio.toFixed(3) + ' €';
-  priceEl.className = 'sheet-price' + (tier === 'cheap' ? ' cheap' : tier === 'expensive' ? ' expensive' : '');
-  
-  document.getElementById('sheetDist').textContent = dist.toFixed(1) + ' km';
-  document.getElementById('sheetUpdated').textContent = station.actualizacion;
-
-  document.getElementById('sheetWazeBtn').onclick = () => openWaze(station.lat, station.lon);
-
-  document.getElementById('sheet').classList.add('show');
-  document.getElementById('sheetBackdrop').classList.add('show');
-
-  if(recenter && state.map){
-    state.map.panTo([station.lat, station.lon], { animate: true, duration: 0.5 });
-  }
-  refreshMarkerStyles();
-}
-
-function closeStationSheet(){
-  state.selectedId = null;
-  document.getElementById('sheet').classList.remove('show');
-  document.getElementById('sheetBackdrop').classList.remove('show');
-  refreshMarkerStyles();
-}
-
-function refreshMarkerStyles(){
-  Object.entries(state.markers).forEach(([id, marker]) => {
-    const station = state.stations.find(s => s.id == id);
-    if(station){
-      marker.setIcon(createStationIcon({ ...station, _tier: getPriceTier(station.precio) }));
-    }
-  });
-}
-
-function openWaze(lat, lon){
-  window.open(`https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, '_blank');
-}
-
-/* List View Rendering */
-function populateBrandFilter(){
-  const select = document.getElementById('brandFilter');
-  const brands = [...new Set(state.stations.map(s => s.marca))].sort();
-  select.innerHTML = '<option value="all">Todas as marcas</option>' +
-    brands.map(b => `<option value="${b}">${b}</option>`).join('');
-  select.value = state.filterBrand;
-}
-
-function renderList(){
-  const container = document.getElementById('stationList');
-  const list = getFilteredSortedStations();
-
-  if(!list.length){
-    container.innerHTML = '<div class="empty-state">Nenhuma gasolineira encontrada com estes filtros.</div>';
-    return;
-  }
-
-  container.innerHTML = list.map(station => {
-    const tier = station._tier;
-    const priceClass = tier === 'cheap' ? ' cheap' : tier === 'expensive' ? ' expensive' : '';
-    return `
-      <div class="station-card" data-id="${station.id}">
-        <div class="sc-top">
-          <div>
-            <p class="sc-name">${station.nombre}</p>
-            <span class="sc-brand">${station.marca} · ${station.direccao}</span>
-          </div>
-          <span class="sc-price${priceClass}">${station.precio.toFixed(3)} €</span>
-        </div>
-        <div class="sc-meta">
-          <span>📍 <b>${station._dist.toFixed(1)} km</b></span>
-          <span>🕒 <b>${station.actualizacion}</b></span>
-        </div>
-        <div class="sc-actions">
-          <button class="btn primary" data-waze="${station.id}">🧭 Abrir no Waze</button>
-        </div>
-      </div>`;
-  }).join('');
-
-  container.querySelectorAll('.station-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      if(e.target.closest('[data-waze]')) return;
-      goToStationOnMap(parseInt(card.dataset.id));
-    });
-  });
-  container.querySelectorAll('[data-waze]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const st = state.stations.find(s => s.id === parseInt(btn.dataset.waze));
-      if(st) openWaze(st.lat, st.lon);
-    });
-  });
-}
-
-function goToStationOnMap(id){
-  setView('map');
-  openStationSheet(id, true);
-}
-
-/* Tab & View Switcher */
-function setView(view){
-  state.view = view;
-  const isGasSubview = (view === 'map' || view === 'list');
-
-  document.querySelectorAll('.segment button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  document.getElementById('view-map').classList.toggle('active', view === 'map');
-  document.getElementById('view-list').classList.toggle('active', view === 'list');
-  document.getElementById('viajeView').classList.toggle('active', view === 'viaje');
-
-  document.getElementById('topbarGas').classList.toggle('hide', !isGasSubview);
-  document.getElementById('segmentWrap').classList.toggle('hide', !isGasSubview);
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === (isGasSubview ? 'gas' : 'viaje')));
-
-  if(isGasSubview) state.lastGasView = view;
-  if(view === 'map' && state.map) {
-    setTimeout(() => {
-      state.map.invalidateSize();
-      renderMap();
-    }, 100);
+    const ida = TOLLS[keyIda];
+    peajeInput.value = store.get('peaje_'+keyIda, ida ?? 0);
+    peajeInput.dataset.key = keyIda || '';
+    peajeInfo.textContent = (ida!==undefined) ? 'Portagem habitual desta ruta (editável)' : 'Sem portagem predefinida para este percurso';
   }
 }
+[peajeInput, peajeIdaInput, peajeVueltaInput].forEach(el=>{
+  el.addEventListener('change', ()=>{
+    const key = el.dataset.key;
+    if(key) store.set('peaje_'+key, parseFloat(el.value));
+  });
+});
+updatePeajeSugerido();
 
-/* Recalculate Position & Geolocation Handling */
-function requestGeolocation(){
-  showToast('A obter localização GPS...');
-  if(!navigator.geolocation){
-    showToast('GPS não suportado neste navegador');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      state.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      
-      const districtId = getDistrictIdByCoords(state.userLocation.lat, state.userLocation.lon);
-      await fetchDistrictStations(districtId);
-
-      if(state.map){
-        state.map.setView([state.userLocation.lat, state.userLocation.lon], 13);
-      }
-      renderUserMarker();
-      renderMap();
-      renderList();
-      showToast('Localização atualizada com sucesso');
-    },
-    (err) => {
-      console.warn('Geolocation Error:', err);
-      showToast('Erro ao obter GPS · A usar localização predefinida');
-      state.userLocation = null;
-      if(state.map) state.map.setView([LISBOA_CENTER.lat, LISBOA_CENTER.lon], 13);
-    },
-    { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
-  );
+/* ---------- Cálculo de ruta (OSRM, sin API key) ---------- */
+async function routeDistanceKm(a,b){
+  const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if(!j.routes || !j.routes.length) throw new Error('Não foi possível calcular este percurso');
+  return { km: j.routes[0].distance/1000, h: j.routes[0].duration/3600 };
 }
 
-/* Toast System */
-let toastTimer = null;
-function showToast(msg){
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
-}
-
-/* Event Binds */
-function bindEvents(){
-  document.querySelectorAll('.segment button').forEach(btn => {
-    btn.addEventListener('click', () => setView(btn.dataset.view));
-  });
-
-  document.getElementById('refreshBtn').addEventListener('click', refreshStations);
-  document.getElementById('locateBtn').addEventListener('click', requestGeolocation);
-
-  document.getElementById('closeSheetBtn').addEventListener('click', closeStationSheet);
-  document.getElementById('sheetBackdrop').addEventListener('click', closeStationSheet);
-
-  document.querySelectorAll('#sortChips .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      state.sortBy = chip.dataset.sort;
-      document.querySelectorAll('#sortChips .chip').forEach(c => c.classList.toggle('active', c === chip));
-      renderList();
-    });
-  });
-
-  document.querySelectorAll('#distChips .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      state.filterDist = chip.dataset.dist;
-      document.querySelectorAll('#distChips .chip').forEach(c => c.classList.toggle('active', c === chip));
-      renderList();
-    });
-  });
-
-  document.getElementById('brandFilter').addEventListener('change', (e) => {
-    state.filterBrand = e.target.value;
-    renderList();
-  });
-
-  document.getElementById('viajeBtn').addEventListener('click', () => setView('viaje'));
-  document.getElementById('gasBtn').addEventListener('click', () => setView(state.lastGasView || 'map'));
-}
-
-async function init(){
-  bindEvents();
-  initMap();
-  await loadInitialStations();
-  renderMap();
-  renderList();
-  requestGeolocation();
-}
-
-document.addEventListener('DOMContentLoaded', init);
-
-/* ============================================================
-   DESPESAS VIAGEM — Module Logic
-   ============================================================ */
-(function(){
-const CARS = { arona: {label:'SEAT Arona', consumo:6.2}, troc: {label:'VW T-Roc', consumo:5.8} };
-
+/* ---------- Botón calcular ---------- */
 document.getElementById('calcBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('err');
   errEl.style.display='none';
@@ -960,26 +484,57 @@ document.getElementById('calcBtn').addEventListener('click', async ()=>{
   resEl.classList.remove('show');
 
   try{
-    const consumo = parseFloat(document.getElementById('consumo').value) || 6.2;
-    const precio = parseFloat(document.getElementById('precio').value) || 1.65;
-    const peajeVal = parseFloat(document.getElementById('peaje').value) || 0;
-    
-    const total = (250 / 100 * consumo * precio) + peajeVal;
-    document.getElementById('total').textContent = total.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-    document.getElementById('totalsub').textContent = '250 km · 2.5 h';
-    document.getElementById('rDist').textContent = '250 km';
-    document.getElementById('rFuel').textContent = (total - peajeVal).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-    document.getElementById('rPeaje').textContent = peajeVal.toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    let origen = state.origen, destino = state.destino;
+    if(!origen){
+      const v = document.getElementById('origen').value.trim();
+      if(!v) throw new Error('Indique uma origen');
+      const g = await geocode(v); origen = { lat:g.lat, lon:g.lon };
+    }
+    if(!destino){
+      const v = document.getElementById('destino').value.trim();
+      if(!v) throw new Error('Indique um destino');
+      const g = await geocode(v); destino = { lat:g.lat, lon:g.lon };
+    }
+
+    const { km, h } = await routeDistanceKm(origen, destino);
+    const consumo = parseFloat(document.getElementById('consumo').value) || 0;
+    const precio = parseFloat(document.getElementById('precio').value) || 0;
+    const litros1 = km/100*consumo;
+    const costeFuel1 = litros1*precio;
+
+    let litros, costeFuel, peajeTotal, distText, timeText;
+    if(roundtripChk.checked){
+      litros = litros1*2;
+      costeFuel = costeFuel1*2;
+      const ida = parseFloat(peajeIdaInput.value) || 0;
+      const vuelta = parseFloat(peajeVueltaInput.value) || 0;
+      peajeTotal = ida + vuelta;
+      distText = (km*2).toFixed(1)+' km (ida y vuelta)';
+      timeText = (h*2).toFixed(1)+' h';
+    } else {
+      litros = litros1;
+      costeFuel = costeFuel1;
+      peajeTotal = parseFloat(peajeInput.value) || 0;
+      distText = km.toFixed(1)+' km';
+      timeText = h.toFixed(1)+' h';
+    }
+    const total = costeFuel + peajeTotal;
+
+    document.getElementById('total').textContent = fmtEUR(total);
+    document.getElementById('totalsub').textContent = `${distText} · ${timeText}`;
+    document.getElementById('rDist').textContent = distText;
+    document.getElementById('rFuel').textContent = fmtEUR(costeFuel);
+    document.getElementById('rPeaje').textContent = fmtEUR(peajeTotal);
     resEl.classList.add('show');
   }catch(e){
-    errEl.textContent = 'Erro ao calcular a viagem';
+    errEl.textContent = e.message || 'Erro ao calcular';
     errEl.style.display='block';
   }
 });
 
-function tickOdo(){ document.getElementById('odo').textContent = new Date().toLocaleDateString('pt-PT'); }
+/* ---------- Reloj cabecera ---------- */
+function tickOdo(){ document.getElementById('odo').textContent = new Date().toLocaleDateString('es-ES'); }
 tickOdo();
-})();
 </script>
 </body>
 </html>
